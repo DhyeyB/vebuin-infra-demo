@@ -10,10 +10,3 @@ sudo systemctl restart nginx.service
 sudo mkdir -p /home/ubuntu/.ssh
 touch /home/ubuntu/.ssh/known_hosts
 sudo echo ${ssh_public_key} >> /home/ubuntu/.ssh/authorized_keys
-sudo adduser --disabled-password --gecos '' deploy
-sudo passwd -d deploy
-sudo usermod -aG sudo deploy
-sudo su deploy
-sudo mkdir -p /home/deploy/.ssh
-touch /home/deploy/.ssh/known_hosts
-sudo echo ${ssh_public_key} >> /home/deploy/.ssh/authorized_keys

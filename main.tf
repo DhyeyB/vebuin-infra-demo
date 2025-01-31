@@ -32,8 +32,7 @@ module "alb" {
 }
 
 module "iam_role" {
-  source  = "app.terraform.io/bombay-softwares/infrastructure/aws//modules/iam_role"
-  version = "0.2.0-prod.1"
+  source  = "./modules/iam_role"
 
   app_name                     = var.app_name
   env                          = var.environment

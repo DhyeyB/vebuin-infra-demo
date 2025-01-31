@@ -1,5 +1,5 @@
 region              = "ap-south-1"
-profile             = "y  ofile name"
+profile             = "your aws pofile name"
 app_name            = "vebuin"
 environment         = "prod"
 az_count            = "2"
@@ -23,7 +23,7 @@ ingress_rules = [{
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
 }]
-instance_ami   = "AMI ID"
-instance_type  = "t2.micro"
-ssh_public_key = "your ssh public key which you have created"
-
+assume_role_policy_file_path = "<path of assume role policy>/assume_role_policy.json"
+execution_policy_file_path   = "<path of execution policy>/execution_role_policy.json"
+dockerfile_path              = "<path of docker file>"
+upload_docker_image          = "yes"

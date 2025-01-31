@@ -66,22 +66,23 @@ variable "egress_rule" {
   description = "The egress rule for the security group"
 }
 
-variable "instance_ami" {
-  description = "Instance ami"
+variable "assume_role_policy_file_path" {
+  description = "assume role policy file path"
   type        = string
-  nullable    = false
 }
 
-variable "instance_type" {
-  description = "Instance type of EC2"
+variable "execution_policy_file_path" {
+  description = "execution policy file path"
   type        = string
-  nullable    = false
 }
 
-variable "ssh_public_key" {
-  description = "Public key"
+variable "dockerfile_path" {
+  description = "Enter the path of the dockerfile from which you need to create docker image"
   type        = string
-  nullable    = false
-  default     = ""
+  default     = null
 }
 
+variable "upload_docker_image" {
+  description = "If you want to upload docker image on ECR then value should not be null"
+  type        = string
+}

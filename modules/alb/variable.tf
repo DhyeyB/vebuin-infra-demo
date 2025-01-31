@@ -4,7 +4,6 @@ variable "app_name" {
   nullable    = false
 }
 
-
 variable "vpc_id" {
   type        = string
   description = "Network VPC ID"

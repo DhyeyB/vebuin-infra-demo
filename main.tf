@@ -31,15 +31,45 @@ module "alb" {
   subnets_id        = [module.vpc.aws_public_subnet_id_1, module.vpc.aws_public_subnet_id_2]
 }
 
+module "iam_role" {
+  source  = "app.terraform.io/bombay-softwares/infrastructure/aws//modules/iam_role"
+  version = "0.2.0-prod.1"
+
+  app_name                     = var.app_name
+  env                          = var.environment
+  assume_role_policy_file_path = var.assume_role_policy_file_path
+  execution_policy_file_path   = var.execution_policy_file_path
+
+}
+
+module "ecr" {
+  source = "./modules/ecr"
+
+  app_name            = var.app_name
+  env                 = var.environment
+  region              = var.region
+  dockerfile_path     = var.dockerfile_path
+  upload_docker_image = var.upload_docker_image
+  profile             = var.profile
+}
+
+module "ecs" {
+  source = "./modules/ecs"
+
+  app_name           = var.app_name
+  env                = var.environment
+  region             = var.region
+  image_url          = module.ecr.image_url
+  execution_role_arn = module.iam_role.role_arn
+  task_role_arn      = module.iam_role.role_arn
+  security_group_id  = [module.security.security_group_id]
+  subnets_id         = [module.vpc.aws_public_subnet_id_1, module.vpc.aws_public_subnet_id_2]
+  alb_tg_arn         = module.alb.target_group_arn
+}
+
 module "asg" {
   source = "./modules/asg"
 
-  instance_ami      = var.instance_ami
-  instance_type     = var.instance_type
-  security_group_id = [module.security.security_group_id]
-  user_data = base64encode(templatefile("./userdata.sh", {
-    ssh_public_key = var.ssh_public_key
-  }))
-  subnets_id       = [module.vpc.aws_public_subnet_id_1, module.vpc.aws_public_subnet_id_2]
-  target_group_arn = [module.alb.target_group_arn]
+  cluster_name = module.ecs.cluster_name
+  service_name = module.ecs.service_name
 }

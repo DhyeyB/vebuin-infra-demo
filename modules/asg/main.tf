@@ -1,57 +1,47 @@
-resource "aws_launch_template" "lt" {
-  name_prefix   = "vebuin"
-#   image_id      = aws_ami_from_instance.app_ami.id
-  image_id      = var.instance_ami  # Replace with your AMI ID
-  instance_type = var.instance_type
+resource "aws_appautoscaling_target" "ecs_target" {
+  max_capacity       = 4  
+  min_capacity       = 1  
+  resource_id        = "service/${var.cluster_name}/${var.service_name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+}
 
-  block_device_mappings {
-    device_name = "/dev/sda1"
+resource "aws_appautoscaling_policy" "ecs_scale_out" {
+  name               = "scale-out"
+  policy_type        = "StepScaling"
+  resource_id        = aws_appautoscaling_target.ecs_target.resource_id
+  scalable_dimension = aws_appautoscaling_target.ecs_target.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.ecs_target.service_namespace
 
-    ebs {
-      volume_size = 10
+  step_scaling_policy_configuration {
+    adjustment_type         = "ChangeInCapacity"
+    cooldown               = 60
+    metric_aggregation_type = "Average"
+
+    step_adjustment {
+      scaling_adjustment = 1
+      metric_interval_lower_bound = 0
     }
   }
+}
 
-  network_interfaces {
-    associate_public_ip_address = true
-    security_groups             = var.security_group_id
+resource "aws_appautoscaling_policy" "ecs_scale_in" {
+  name               = "scale-in"
+  policy_type        = "StepScaling"
+  resource_id        = aws_appautoscaling_target.ecs_target.resource_id
+  scalable_dimension = aws_appautoscaling_target.ecs_target.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.ecs_target.service_namespace
+
+  step_scaling_policy_configuration {
+    adjustment_type         = "ChangeInCapacity"
+    cooldown               = 60
+    metric_aggregation_type = "Average"
+
+    step_adjustment {
+      scaling_adjustment = -1
+      metric_interval_upper_bound = 0
+    }
   }
-
-  user_data = var.user_data
-
-}
-
-resource "aws_autoscaling_group" "asg" {
-  vpc_zone_identifier = var.subnets_id # Replace with your subnet
-  desired_capacity    = 2
-  min_size           = 2
-  max_size           = 4
-
-  target_group_arns = var.target_group_arn
-
-#   health_check_type          = "EC2"
-
-  launch_template {
-    id      = aws_launch_template.lt.id
-    version = "$Latest"
-  }
-
-}
-
-resource "aws_autoscaling_policy" "scale_up" {
-  name                   = "scale-up"
-  scaling_adjustment     = 1
-  adjustment_type        = "ChangeInCapacity"
-  cooldown               = 60
-  autoscaling_group_name = aws_autoscaling_group.asg.id
-}
-
-resource "aws_autoscaling_policy" "scale_down" {
-  name                   = "scale-down"
-  scaling_adjustment     = -1
-  adjustment_type        = "ChangeInCapacity"
-  cooldown               = 60
-  autoscaling_group_name = aws_autoscaling_group.asg.id
 }
 
 resource "aws_cloudwatch_metric_alarm" "cpu_high" {
@@ -59,16 +49,17 @@ resource "aws_cloudwatch_metric_alarm" "cpu_high" {
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
   metric_name         = "CPUUtilization"
-  namespace           = "AWS/EC2"
+  namespace           = "AWS/ECS"
   period              = 60
   statistic           = "Average"
   threshold           = 50
-  alarm_description   = "Scale up when CPU > 70%"
+  alarm_description   = "Scale up when CPU > 50%"
   actions_enabled     = true
   dimensions = {
-    AutoScalingGroupName = aws_autoscaling_group.asg.name
+    ClusterName = var.cluster_name
+    ServiceName = var.service_name
   }
-  alarm_actions = [aws_autoscaling_policy.scale_up.arn]
+  alarm_actions = [aws_appautoscaling_policy.ecs_scale_out.arn]
 }
 
 resource "aws_cloudwatch_metric_alarm" "cpu_low" {
@@ -80,10 +71,11 @@ resource "aws_cloudwatch_metric_alarm" "cpu_low" {
   period              = 60
   statistic           = "Average"
   threshold           = 30
-  alarm_description   = "Scale down when CPU < 50%"
+  alarm_description   = "Scale down when CPU < 30%"
   actions_enabled     = true
   dimensions = {
-    AutoScalingGroupName = aws_autoscaling_group.asg.name
+    ClusterName = var.cluster_name
+    ServiceName = var.service_name
   }
-  alarm_actions = [aws_autoscaling_policy.scale_down.arn]
+  alarm_actions = [aws_appautoscaling_policy.ecs_scale_in.arn]
 }
